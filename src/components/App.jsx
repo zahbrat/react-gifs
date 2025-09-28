@@ -5,14 +5,14 @@ import Button from "./Button";
 import Loader from "./Loader";
 import Modal from "./Modal";
 
-const PER_PAGE = 12;
+const PER_PAGE = 8;
 
 export default class App extends Component {
   state = {
     out: false,
     query: "",
     images: [],
-    page: 1,
+    page: 0,
     isLoading: false,
     showModal: false,
     largeImageURL: "",
@@ -26,13 +26,16 @@ export default class App extends Component {
 
     try {
       const res = await fetch(
-        "https://api.giphy.com/v1/gifs/search/?api_key=24yveDJTIJujJcNLwbbXve0VNis9r4X0&q="+query
+        `https://api.giphy.com/v1/gifs/search?api_key=24yveDJTIJujJcNLwbbXve0VNis9r4X0&q=${query}&limit=${PER_PAGE}&offset=${
+          page * PER_PAGE
+        }`
       );
       const data = await res.json();
       console.log(data);
 
       this.setState((prev) => ({
         images: [...prev.images, ...data.data],
+        out: data.pagination.total_count <= (page + 1) * PER_PAGE, // чи ще є дані?
       }));
     } catch (error) {
       console.error("Error:", error);
@@ -42,15 +45,11 @@ export default class App extends Component {
   };
 
   handleSearchSubmit = (query) => {
-    this.setState({ query, page: 1, images: [] }, this.fetchImages);
+    this.setState({ query, page: 0, images: [], out: false }, this.fetchImages);
   };
 
   handleLoadMore = () => {
-    if (this.state.images.length < PER_PAGE) {
-      this.setState({out: true})
-    } else {
-      this.setState((prev) => ({ page: prev.page + 1 }), this.fetchImages);
-    }
+    this.setState((prev) => ({ page: prev.page + 1 }), this.fetchImages);
   };
 
   openModal = (url) => {
@@ -62,15 +61,15 @@ export default class App extends Component {
   };
 
   render() {
-    const { images, isLoading, showModal, largeImageURL } = this.state;
+    const { images, isLoading, showModal, largeImageURL, out } = this.state;
 
     return (
       <>
         <Searchbar onSubmit={this.handleSearchSubmit} />
         <ImageGallery images={images} onImageClick={this.openModal} />
         {isLoading && <Loader />}
-        {images.length > 0 && !isLoading && (
-          <Button onClick={this.handleLoadMore} out={this.state.out} />
+        {images.length > 0 && !isLoading && !out && (
+          <Button onClick={this.handleLoadMore} />
         )}
         {showModal && (
           <Modal largeImageURL={largeImageURL} onClose={this.closeModal} />
